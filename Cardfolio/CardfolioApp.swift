@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 @main
@@ -6,5 +7,6 @@ struct CardfolioApp: App {
         WindowGroup {
             Text("Cardfolio")
         }
+        .modelContainer(for: Card.self)
     }
 }
