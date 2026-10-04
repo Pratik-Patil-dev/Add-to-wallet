@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Test WalletPass
+        run: swift test --package-path Packages/WalletPass
+
+      - name: Build app
+        run: |
+          xcodebuild build \
+            -project Cardfolio.xcodeproj \
+            -scheme Cardfolio \
+            -destination 'generic/platform=iOS Simulator' \
+            -quiet \
+            CODE_SIGNING_ALLOWED=NO
