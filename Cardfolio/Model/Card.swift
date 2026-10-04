@@ -20,7 +20,14 @@ final class Card {
     var notes: String = ""
 
     var createdAt: Date = Date()
+    var updatedAt: Date = Date()
     var addedToWalletAt: Date?
+
+    /// True when the card was edited after its pass went into Wallet.
+    var walletPassIsStale: Bool {
+        guard let addedToWalletAt else { return false }
+        return updatedAt > addedToWalletAt
+    }
 
     init(design: CardDesign) {
         self.design = design
