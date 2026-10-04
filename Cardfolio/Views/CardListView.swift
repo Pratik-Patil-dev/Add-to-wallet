@@ -7,6 +7,7 @@ struct CardListView: View {
 
     @State private var isAddingCard = false
     @State private var editingCard: Card?
+    @State private var isShowingSettings = false
     @Namespace private var zoom
 
     var body: some View {
@@ -26,6 +27,14 @@ struct CardListView: View {
                     .zoomDestination(id: card.serialNumber, in: zoom)
             }
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        isShowingSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel("Settings")
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         isAddingCard = true
@@ -40,6 +49,9 @@ struct CardListView: View {
             }
             .sheet(item: $editingCard) { card in
                 CardEditorView(card: card)
+            }
+            .sheet(isPresented: $isShowingSettings) {
+                SettingsView()
             }
         }
     }
@@ -139,4 +151,5 @@ private struct EmptyCardsView: View {
 #Preview {
     CardListView()
         .modelContainer(for: Card.self, inMemory: true)
+        .environment(PassSigningStore())
 }
