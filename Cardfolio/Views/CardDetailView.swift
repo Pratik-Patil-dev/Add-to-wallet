@@ -1,15 +1,21 @@
+import PassKit
 import SwiftData
 import SwiftUI
 
 struct CardDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(PassSigningStore.self) private var signing
 
     let card: Card
 
     @State private var isEditing = false
     @State private var isConfirmingDelete = false
     @State private var isDeleting = false
+    @State private var pendingPass: PendingPass?
+    @State private var isShowingSigningSetup = false
+    @State private var isShowingSettings = false
+    @State private var walletError: String?
 
     var body: some View {
         let design = card.design
@@ -21,6 +27,18 @@ struct CardDetailView: View {
                     .padding(.vertical, 8)
                     .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
                     .listRowBackground(Color.clear)
+            }
+
+            Section {
+                AddToWalletButton(action: addToWallet)
+                    .frame(height: 50)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+            } footer: {
+                Text(walletStatus)
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 4)
             }
 
             Section {
@@ -73,6 +91,28 @@ struct CardDetailView: View {
         .sheet(isPresented: $isEditing) {
             CardEditorView(card: card)
         }
+        .sheet(item: $pendingPass) { pending in
+            AddPassSheet(pending: pending) { added in
+                if added { card.addedToWalletAt = Date() }
+                pendingPass = nil
+            }
+            .ignoresSafeArea()
+        }
+        .sheet(isPresented: $isShowingSettings) {
+            SettingsView()
+        }
+        .alert("Set Up Wallet Signing", isPresented: $isShowingSigningSetup) {
+            Button("Not Now", role: .cancel) {}
+            Button("Open Settings") { isShowingSettings = true }
+        } message: {
+            Text("Wallet needs passes signed with your Pass Type ID certificate. Import it once in Settings and every card can go into Wallet.")
+        }
+        .alert("Couldn't Add to Wallet", isPresented: isShowingWalletError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(walletError ?? "")
+        }
+        .sensoryFeedback(.success, trigger: card.addedToWalletAt)
         .confirmationDialog("Delete this card?", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
             Button("Delete Card", role: .destructive) {
                 isDeleting = true
@@ -84,6 +124,41 @@ struct CardDetailView: View {
         .onDisappear {
             // Deleting while this screen is still on show would have it read a dead model.
             if isDeleting { context.delete(card) }
+        }
+    }
+
+    private var walletStatus: String {
+        if card.walletPassIsStale {
+            return "Edited since you added it. Add it again to update the pass in Wallet."
+        }
+        if let added = card.addedToWalletAt {
+            return "In Wallet since \(added.formatted(date: .abbreviated, time: .omitted))."
+        }
+        return "A pass you can pull up in Wallet to remember this card. It can't be used to pay."
+    }
+
+    private var isShowingWalletError: Binding<Bool> {
+        Binding(get: { walletError != nil }, set: { if !$0 { walletError = nil } })
+    }
+
+    private func addToWallet() {
+        guard PKAddPassesViewController.canAddPasses() else {
+            walletError = "This device can't add passes to Wallet."
+            return
+        }
+        guard let signer = signing.signer else {
+            isShowingSigningSetup = true
+            return
+        }
+        do {
+            let pass = try CardPass.make(for: card, signedBy: signer)
+            guard let pending = PendingPass(pass) else {
+                walletError = "Wallet wouldn't open this pass."
+                return
+            }
+            pendingPass = pending
+        } catch {
+            walletError = error.localizedDescription
         }
     }
 }
