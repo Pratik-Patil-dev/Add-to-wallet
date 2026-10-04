@@ -1,0 +1,22 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/*/Package.resolved
+
+# Signing material never belongs in the repo
+*.p12
+*.pem
+*.key
+*.mobileprovision
+*.pkpass
+
+# macOS
+.DS_Store
