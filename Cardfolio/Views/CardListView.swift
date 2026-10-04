@@ -7,6 +7,7 @@ struct CardListView: View {
 
     @State private var isAddingCard = false
     @State private var editingCard: Card?
+    @Namespace private var zoom
 
     var body: some View {
         NavigationStack {
@@ -14,12 +15,16 @@ struct CardListView: View {
                 if cards.isEmpty {
                     EmptyCardsView { isAddingCard = true }
                 } else {
-                    CardStack(cards: cards, edit: { editingCard = $0 }, delete: delete)
+                    CardStack(cards: cards, zoom: zoom, edit: { editingCard = $0 }, delete: delete)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Cards")
+            .navigationDestination(for: Card.self) { card in
+                CardDetailView(card: card)
+                    .zoomDestination(id: card.serialNumber, in: zoom)
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -50,6 +55,7 @@ struct CardListView: View {
 /// newest sits in front, fully visible.
 private struct CardStack: View {
     let cards: [Card]
+    let zoom: Namespace.ID
     let edit: (Card) -> Void
     let delete: (Card) -> Void
 
@@ -63,15 +69,19 @@ private struct CardStack: View {
             ScrollView {
                 VStack(spacing: -(height - peek)) {
                     ForEach(cards) { card in
-                        CardFaceView(design: card.design)
-                            .frame(width: width, height: height)
-                            .shadow(color: .black.opacity(0.16), radius: 10, y: -2)
-                            .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 16, style: .continuous))
-                            .contextMenu {
-                                Button("Edit", systemImage: "pencil") { edit(card) }
-                                Button("Delete", systemImage: "trash", role: .destructive) { delete(card) }
-                            }
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        NavigationLink(value: card) {
+                            CardFaceView(design: card.design)
+                                .frame(width: width, height: height)
+                                .zoomSource(id: card.serialNumber, in: zoom)
+                        }
+                        .buttonStyle(.plain)
+                        .shadow(color: .black.opacity(0.16), radius: 10, y: -2)
+                        .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .contextMenu {
+                            Button("Edit", systemImage: "pencil") { edit(card) }
+                            Button("Delete", systemImage: "trash", role: .destructive) { delete(card) }
+                        }
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                 }
                 .padding(.top, 12)
