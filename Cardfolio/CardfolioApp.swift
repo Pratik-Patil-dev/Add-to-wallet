@@ -5,7 +5,7 @@ import SwiftUI
 struct CardfolioApp: App {
     var body: some Scene {
         WindowGroup {
-            Text("Cardfolio")
+            CardListView()
         }
         .modelContainer(for: Card.self)
     }
